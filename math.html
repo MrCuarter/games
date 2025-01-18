@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Sumas Mejorado</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+            text-align: center;
+            background-color: #f0f8ff;
+        }
+        .game-container {
+            margin: 20px auto;
+            width: 350px;
+            padding: 20px;
+            border: 3px solid #ffa500;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .question {
+            font-size: 28px;
+            margin: 20px 0;
+            color: #ff4500;
+        }
+        .input-answer, .input-name {
+            font-size: 18px;
+            padding: 10px;
+            width: 80%;
+            margin: 10px 0;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            background-color: #32cd32;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #228b22;
+        }
+        .btn:disabled {
+            background-color: #d3d3d3;
+            cursor: not-allowed;
+        }
+        .timer, .score {
+            margin: 10px 0;
+            font-size: 20px;
+        }
+        .image-container img {
+            width: 100%;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Pantalla de inicio -->
+    <div id="start-screen" class="game-container">
+        <h1>🎮 Bienvenido al Juego de Sumas 🎉</h1>
+        <input id="player-name" class="input-name" type="text" placeholder="Escribe tu nombre" />
+        <div>
+            <label for="difficulty">Elige nivel:</label>
+            <select id="difficulty">
+                <option value="10-turista">Turista 🌟 (1-10)</option>
+                <option value="10-20">Explorador ⭐⭐ (10-20)</option>
+                <option value="50-aventurero">Aventurero 🔥 (10-50 sin llevadas)</option>
+                <option value="50-colono">Colono 🌍 (10-50 con llevadas)</option>
+            </select>
+        </div>
+        <button class="btn" onclick="startGame()">Comenzar Juego ▶️</button>
+    </div>
+
+    <!-- Pantalla del juego -->
+    <div id="game-screen" class="game-container" style="display: none;">
+        <div class="image-container">
+            <img id="game-image" src="https://i.postimg.cc/XJVZysTZ/e4f91d37-026a-44d0-91ea-b26cfdaa34a7-6049e234-76c4-473f-b5f7-24e7539bf168-v1.png" alt="Imagen del juego">
+        </div>
+        <h1>Juego de Sumas</h1>
+        <div class="timer">⏳ Tiempo: <span id="time">120</span> segundos</div>
+        <div class="score">🌟 Puntos: <span id="score">0</span></div>
+        <div class="question" id="question">¿Cuánto es 5 + 3? 🤔</div>
+        <input type="number" id="answer" class="input-answer" placeholder="Escribe tu respuesta" />
+        <button class="btn" onclick="checkAnswer()">Responder ✅</button>
+        <button id="time-joker" class="btn" onclick="useTimeJoker()">⏰ +Tiempo Extra</button>
+        <button id="skip-joker" class="btn" onclick="useSkipJoker()">🔄 Saltar Pregunta</button>
+    </div>
+
+    <!-- Pantalla de resultados -->
+    <div id="end-screen" class="game-container" style="display: none;">
+        <h1>¡Juego terminado! 🎉</h1>
+        <div class="image-container">
+            <img id="end-image" src="https://i.postimg.cc/DZM2y5F3/1484fa66-2d32-4dd5-b5a9-6acd8a16d75e-6049e234-76c4-473f-b5f7-24e7539bf168-v1.png" alt="Imagen final">
+        </div>
+        <p>🌟 Puntos finales: <span id="final-score">0</span></p>
+        <p>🏆 Últimas 10 puntuaciones:</p>
+        <ol id="high-scores"></ol>
+        <button class="btn" onclick="resetGame()">Jugar de Nuevo 🔄</button>
+    </div>
+
+    <script>
+        let score = 0;
+        let time = 120;
+        let timer;
+        let correctAnswer;
+        let minNumber = 1;
+        let maxNumber = 10;
+        let allowCarry = false;
+        let playerName = '';
+        let highScores = JSON.parse(localStorage.getItem('highScores')) || [];
+
+        // Iniciar el juego
+        function startGame() {
+            playerName = document.getElementById('player-name').value.trim();
+            if (!playerName) {
+                alert('Por favor, ingresa tu nombre.');
+                return;
+            }
+            const difficulty = document.getElementById('difficulty').value;
+
+            // Configurar niveles
+            switch (difficulty) {
+                case "10-turista":
+                    minNumber = 1;
+                    maxNumber = 10;
+                    allowCarry = false;
+                    break;
+                case "10-20":
+                    minNumber = 10;
+                    maxNumber = 20;
+                    allowCarry = false;
+                    break;
+                case "50-aventurero":
+                    minNumber = 10;
+                    maxNumber = 50;
+                    allowCarry = false;
+                    break;
+                case "50-colono":
+                    minNumber = 10;
+                    maxNumber = 50;
+                    allowCarry = true;
+                    break;
+            }
+
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+
+            correctAnswer = generateQuestion();
+            startTimer();
+        }
+
+        // Generar nueva pregunta
+        function generateQuestion() {
+            let num1 = Math.floor(Math.random() * (maxNumber - minNumber + 1)) + minNumber;
+            let num2 = Math.floor(Math.random() * (maxNumber - minNumber + 1)) + minNumber;
+
+            if (!allowCarry && num1 + num2 >= 10) {
+                num1 = Math.min(num1, num2); // Evitar llevadas
+            }
+
+            document.getElementById('question').textContent = `¿Cuánto es ${num1} + ${num2}? 🤔`;
+            return num1 + num2;
+        }
+
+        // Verificar respuesta
+        function checkAnswer() {
+            const userAnswer = parseInt(document.getElementById('answer').value);
+            if (userAnswer === correctAnswer) {
+                score++;
+                document.getElementById('score').textContent = score;
+            }
+            correctAnswer = generateQuestion();
+        }
+
+        // Comodín: Añadir tiempo
+        function useTimeJoker() {
+            const extraTime = Math.floor(Math.random() * 41) + 5;
+            time += extraTime;
+            document.getElementById('time').textContent = time;
+            alert(`⏰ ¡Has ganado ${extraTime} segundos!`);
+            document.getElementById('time-joker').disabled = true;
+        }
+
+        // Comodín: Saltar pregunta
+        function useSkipJoker() {
+            correctAnswer = generateQuestion();
+            alert('🔄 ¡Pregunta saltada!');
+            document.getElementById('skip-joker').disabled = true;
+        }
+
+        // Temporizador
+        function startTimer() {
+            timer = setInterval(() => {
+                time--;
+                document.getElementById('time').textContent = time;
+                if (time <= 0) {
+                    clearInterval(timer);
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        // Finalizar el juego
+        function endGame() {
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('end-screen').style.display = 'block';
+            document.getElementById('final-score').textContent = score;
+
+            // Guardar puntuación
+            highScores.push({ name: playerName, score: score });
+            highScores = highScores.sort((a, b) => b.score - a.score).slice(0, 10); // Últimas 10 puntuaciones
+            localStorage.setItem('highScores', JSON.stringify(highScores));
+
+            // Mostrar puntuaciones
+            const scoreList = document.getElementById('high-scores');
+            scoreList.innerHTML = '';
+            highScores.forEach(({ name, score }) => {
+                const li = document.createElement('li');
+                li.textContent = `${name}: ${score} puntos`;
+                scoreList.appendChild(li);
+            });
+        }
+
+        // Reiniciar el juego
+        function resetGame() {
+            score = 0;
+            time = 120;
+            document.getElementById('score').textContent = score;
+            document.getElementById('time').textContent = time;
+            document.getElementById('end-screen').style.display = 'none';
+            document.getElementById('start-screen').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
