@@ -114,7 +114,7 @@
   <!-- Pantalla del juego -->
   <div id="game-screen" class="game-container" style="display: none;">
     <h1>¡Suerte, <span id="playerNameDisplay"></span>! 🎉</h1>
-    <div class="timer">⏳ Tiempo: <span id="time">20</span> seg</div>
+    <div class="timer">⏳ Tiempo: <span id="time">100</span> seg</div>
     <div class="score">🌟 Puntos: <span id="score">0</span></div>
     <div class="question" id="question">¿Cuánto es 5 + 3? 🤔</div>
     <div>
@@ -164,7 +164,7 @@
   <script>
     // Variables globales
     let score = 0;
-    let time = 20;
+    let time = 100;
     let timer = null;
     let correctAnswer = 0;
     let playerName = "";
@@ -232,7 +232,7 @@
       infoMessage.textContent = "";
       
       score = 0;
-      time = 20;
+      time = 100;
       scoreEl.textContent = score;
       timeEl.textContent = time;
       playerNameDisp.textContent = playerName;
