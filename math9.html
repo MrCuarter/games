@@ -1,0 +1,269 @@
+Mr. Cuarter, a continuación te presento un código extendido que incorpora las mejoras sugeridas:  
+ 
+- **Jokers**: se añade el de “Tiempo Extra” (añade 15 segundos) y “Saltar Pregunta”.  
+- **Operaciones variadas**: la pregunta se genera con una operación aleatoria entre suma, resta y multiplicación (con ajuste para niveles bajos en la multiplicación).  
+- **Mejor puntaje**: se guarda en el almacenamiento local para mostrar el récord.  
+
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juego de Aritmética</title>
+  <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Comic Neue', cursive;
+      text-align: center;
+      background-color: #f0f8ff;
+    }
+    .game-container {
+      margin: 20px auto;
+      width: 350px;
+      padding: 20px;
+      border: 3px solid #ffa500;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    .question {
+      font-size: 28px;
+      margin: 20px 10px;
+      color: #0000ff;
+      font-weight: bold;
+    }
+    .input-answer, .input-name {
+      font-size: 24px;
+      padding: 5px;
+      width: 140px;
+      text-align: center;
+      margin: 10px 0;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+    }
+    .btn {
+      padding: 10px 20px;
+      margin: 10px 5px;
+      font-size: 16px;
+      background-color: #32cd32;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background-color: #228b22;
+    }
+    .btn:disabled {
+      background-color: #d3d3d3;
+      cursor: not-allowed;
+    }
+    .timer, .score {
+      margin: 10px 0;
+      font-size: 20px;
+    }
+    .feedback {
+      font-size: 20px;
+      margin: 10px 0;
+      color: #ff4500;
+      height: 30px;
+    }
+    .button-row {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    .image-container img {
+      width: 100%;
+      border-radius: 12px;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Pantalla de bienvenida -->
+  <div id="start-screen" class="game-container">
+    <h1>🎮 Bienvenido al Juego de Aritmética 🎉</h1>
+    <input id="player-name" class="input-name" type="text" placeholder="Escribe tu alias" />
+    <div>
+      <label for="difficulty">Elige nivel:</label>
+      <select id="difficulty">
+        <option value="turista">Turista 🌟 (1-10)</option>
+        <option value="explorador">Explorador ⭐⭐ (10-20)</option>
+        <option value="aventurero">Aventurero 🔥 (10-50 sin llevadas)</option>
+        <option value="colono">Colono 🌍 (10-50 con llevadas)</option>
+      </select>
+    </div>
+    <div class="score">Mejor Puntaje: <span id="highscore">0</span></div>
+    <div class="image-container">
+      <img id="start-image" src="https://i.postimg.cc/HkDkySMp/affc7e3a-d648-4699-be2c-fe672aeac2c2-6049e234-76c4-473f-b5f7-24e7539bf168-v1.png" alt="Imagen de inicio">
+    </div>
+    <button class="btn" onclick="startGame()">Comenzar Juego ▶️</button>
+  </div>
+
+  <!-- Pantalla del juego -->
+  <div id="game-screen" class="game-container" style="display: none;">
+    <h1>¡Suerte, <span id="player-name-display"></span>! 🎉</h1>
+    <div class="timer">⏳ Tiempo: <span id="time">120</span> segundos</div>
+    <div class="score">🌟 Puntos: <span id="score">0</span></div>
+    <div class="question" id="question">Pregunta</div>
+    <input type="number" id="answer" class="input-answer" placeholder="Tu respuesta" />
+    <span id="feedback" class="feedback"></span>
+    <button class="btn" onclick="checkAnswer()">Responder ✅</button>
+    <div class="button-row">
+      <button id="time-joker" class="btn" onclick="useTimeJoker()">⏰ Tiempo Extra</button>
+      <button id="skip-joker" class="btn" onclick="useSkipJoker()">🔄 Saltar Pregunta</button>
+    </div>
+    <div class="image-container">
+      <img id="game-image" src="https://i.postimg.cc/XJVZysTZ/e4f91d37-026a-44d0-91ea-b26cfdaa34a7-6049e234-76c4-473f-b5f7-24e7539bf168-v1.png" alt="Imagen del juego">
+    </div>
+  </div>
+
+  <script>
+    let score = 0;
+    let time = 120;
+    let timer;
+    let correctAnswer;
+    let playerName = '';
+    let currentLevel = '';
+    let timeJokerUsed = false;
+    let skipJokerUsed = false;
+
+    const levelConfig = {
+      turista: { min: 1, max: 10, carry: true },
+      explorador: { min: 10, max: 20, carry: true },
+      aventurero: { min: 10, max: 50, carry: false },
+      colono: { min: 10, max: 50, carry: true }
+    };
+
+    // Carga y muestra el mejor puntaje
+    function loadHighScore() {
+      let highscore = localStorage.getItem('highscore');
+      if (!highscore) {
+        highscore = 0;
+        localStorage.setItem('highscore', highscore);
+      }
+      document.getElementById('highscore').textContent = highscore;
+    }
+
+    function updateHighScore() {
+      let highscore = parseInt(localStorage.getItem('highscore'));
+      if (score > highscore) {
+        localStorage.setItem('highscore', score);
+      }
+    }
+
+    function startGame() {
+      playerName = document.getElementById('player-name').value.trim();
+      currentLevel = document.getElementById('difficulty').value;
+      if (!playerName) {
+        alert('Por favor, ingresa tu nombre.');
+        return;
+      }
+      score = 0;
+      time = 120;
+      timeJokerUsed = false;
+      skipJokerUsed = false;
+      document.getElementById('score').textContent = score;
+      document.getElementById('time').textContent = time;
+      document.getElementById('player-name-display').textContent = playerName;
+      document.getElementById('start-screen').style.display = 'none';
+      document.getElementById('game-screen').style.display = 'block';
+      document.getElementById('time-joker').disabled = false;
+      document.getElementById('skip-joker').disabled = false;
+      correctAnswer = generateQuestion();
+      startTimer();
+    }
+
+    function generateQuestion() {
+      const config = levelConfig[currentLevel];
+      let num1 = Math.floor(Math.random() * (config.max - config.min + 1)) + config.min;
+      let num2 = Math.floor(Math.random() * (config.max - config.min + 1)) + config.min;
+      // Selecciona una operación aleatoria
+      const operations = ['+', '-', '*'];
+      const operator = operations[Math.floor(Math.random() * operations.length)];
+
+      // Ajustes según la operación
+      if (operator === '-' && num1 < num2) {
+        [num1, num2] = [num2, num1];
+      }
+      if (operator === '*' && currentLevel === 'turista') {
+        // Limitar la multiplicación en niveles bajos
+        num1 = Math.floor(Math.random() * 5) + 1;
+        num2 = Math.floor(Math.random() * 5) + 1;
+      }
+
+      document.getElementById('question').textContent = `¿Cuánto es ${num1} ${operator} ${num2}? 🤔`;
+      let answer;
+      switch (operator) {
+        case '+': answer = num1 + num2; break;
+        case '-': answer = num1 - num2; break;
+        case '*': answer = num1 * num2; break;
+      }
+      return answer;
+    }
+
+    function startTimer() {
+      timer = setInterval(() => {
+        time--;
+        document.getElementById('time').textContent = time;
+        if (time <= 0) {
+          endGame();
+        }
+      }, 1000);
+    }
+
+    function checkAnswer() {
+      const userAnswer = parseInt(document.getElementById('answer').value);
+      const feedback = document.getElementById('feedback');
+      if (userAnswer === correctAnswer) {
+        score++;
+        feedback.textContent = '✅ ¡Correcto!';
+        feedback.style.color = 'green';
+        correctAnswer = generateQuestion();
+        document.getElementById('score').textContent = score;
+        document.getElementById('answer').value = '';
+      } else {
+        feedback.textContent = '❌ Incorrecto. Intenta otra vez.';
+        feedback.style.color = 'red';
+      }
+    }
+
+    // Joker que añade 15 segundos
+    function useTimeJoker() {
+      if (!timeJokerUsed) {
+        time += 15;
+        document.getElementById('time').textContent = time;
+        timeJokerUsed = true;
+        document.getElementById('time-joker').disabled = true;
+      }
+    }
+
+    // Joker que salta la pregunta actual
+    function useSkipJoker() {
+      if (!skipJokerUsed) {
+        correctAnswer = generateQuestion();
+        document.getElementById('answer').value = '';
+        document.getElementById('feedback').textContent = '🔄 Pregunta saltada';
+        skipJokerUsed = true;
+        document.getElementById('skip-joker').disabled = true;
+      }
+    }
+
+    function endGame() {
+      clearInterval(timer);
+      updateHighScore();
+      alert(`⏰ Tiempo agotado. Tu puntaje: ${score}`);
+      loadHighScore();
+      document.getElementById('game-screen').style.display = 'none';
+      document.getElementById('start-screen').style.display = 'block';
+    }
+
+    window.onload = loadHighScore;
+  </script>
+</body>
+</html>
+```
+
+Este código integra las funcionalidades ampliadas. Podrás seguir ajustándolo según tus necesidades.
