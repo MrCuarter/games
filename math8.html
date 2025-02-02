@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Sumas</title>
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Comic Neue', cursive;
+            text-align: center;
+            background-color: #f0f8ff;
+        }
+        .game-container {
+            margin: 20px auto;
+            width: 350px;
+            padding: 20px;
+            border: 3px solid #ffa500;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .question {
+            font-size: 28px;
+            margin: 20px 10px;
+            color: #0000ff;
+            font-weight: bold;
+        }
+        .input-answer, .input-name {
+            font-size: 24px;
+            padding: 5px;
+            width: 140px;
+            text-align: center;
+            margin: 10px 0;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 10px 5px;
+            font-size: 16px;
+            background-color: #32cd32;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #228b22;
+        }
+        .btn:disabled {
+            background-color: #d3d3d3;
+            cursor: not-allowed;
+        }
+        .timer, .score {
+            margin: 10px 0;
+            font-size: 20px;
+        }
+        .feedback {
+            font-size: 20px;
+            margin: 10px 0;
+            color: #ff4500;
+            height: 30px;
+        }
+        .button-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .image-container img {
+            width: 100%;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Pantalla de bienvenida -->
+    <div id="start-screen" class="game-container">
+        <h1>🎮 Bienvenido al Juego de Sumas 🎉</h1>
+        <input id="player-name" class="input-name" type="text" placeholder="Escribe tu alias" />
+        <div>
+            <label for="difficulty">Elige nivel:</label>
+            <select id="difficulty">
+                <option value="turista">Turista 🌟 (1-10)</option>
+                <option value="explorador">Explorador ⭐⭐ (10-20)</option>
+                <option value="aventurero">Aventurero 🔥 (10-50 sin llevadas)</option>
+                <option value="colono">Colono 🌍 (10-50 con llevadas)</option>
+            </select>
+        </div>
+        <div class="image-container">
+            <img id="start-image" src="https://i.postimg.cc/HkDkySMp/affc7e3a-d648-4699-be2c-fe672aeac2c2-6049e234-76c4-473f-b5f7-24e7539bf168-v1.png" alt="Imagen de inicio">
+        </div>
+        <button class="btn" onclick="startGame()">Comenzar Juego ▶️</button>
+    </div>
+
+    <!-- Pantalla del juego -->
+    <div id="game-screen" class="game-container" style="display: none;">
+        <h1>¡Suerte, <span id="player-name-display"></span>! 🎉</h1>
+        <div class="timer">⏳ Tiempo: <span id="time">120</span> segundos</div>
+        <div class="score">🌟 Puntos: <span id="score">0</span></div>
+        <div class="question" id="question">¿Cuánto es 5 + 3? 🤔</div>
+        <input type="number" id="answer" class="input-answer" placeholder="Tu respuesta" />
+        <span id="feedback" class="feedback"></span>
+        <button class="btn" onclick="checkAnswer()">Responder ✅</button>
+        <div class="button-row">
+            <button id="time-joker" class="btn" onclick="useTimeJoker()">⏰ Tiempo Extra</button>
+            <button id="skip-joker" class="btn" onclick="useSkipJoker()">🔄 Saltar Pregunta</button>
+        </div>
+        <div class="image-container">
+            <img id="game-image" src="https://i.postimg.cc/XJVZysTZ/e4f91d37-026a-44d0-91ea-b26cfdaa34a7-6049e234-76c4-473f-b5f7-24e7539bf168-v1.png" alt="Imagen del juego">
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let time = 120;
+        let timer;
+        let correctAnswer;
+        let playerName = '';
+        let currentLevel = '';
+
+        const levelConfig = {
+            turista: { min: 1, max: 10, carry: true },
+            explorador: { min: 10, max: 20, carry: true },
+            aventurero: { min: 10, max: 50, carry: false },
+            colono: { min: 10, max: 50, carry: true }
+        };
+
+        function startGame() {
+            playerName = document.getElementById('player-name').value.trim();
+            currentLevel = document.getElementById('difficulty').value;
+
+            if (!playerName) {
+                alert('Por favor, ingresa tu nombre.');
+                return;
+            }
+
+            document.getElementById('player-name-display').textContent = playerName;
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+
+            correctAnswer = generateQuestion();
+            startTimer();
+        }
+
+        function generateQuestion() {
+            const config = levelConfig[currentLevel];
+            let num1 = Math.floor(Math.random() * (config.max - config.min + 1)) + config.min;
+            let num2 = Math.floor(Math.random() * (config.max - config.min + 1)) + config.min;
+
+            if (!config.carry && num1 + num2 >= 10) {
+                num1 = Math.min(num1, num2);
+            }
+
+            document.getElementById('question').textContent = `¿Cuánto es ${num1} + ${num2}? 🤔`;
+            return num1 + num2;
+        }
+
+        function startTimer() {
+            timer = setInterval(() => {
+                time--;
+                document.getElementById('time').textContent = time;
+                if (time <= 0) {
+                    clearInterval(timer);
+                    alert("⏰ Tiempo agotado");
+                    document.getElementById('game-screen').style.display = 'none';
+                    document.getElementById('start-screen').style.display = 'block';
+                }
+            }, 1000);
+        }
+
+        function checkAnswer() {
+            const userAnswer = parseInt(document.getElementById('answer').value);
+            const feedback = document.getElementById('feedback');
+
+            if (userAnswer === correctAnswer) {
+                score++;
+                feedback.textContent = '✅ ¡Correcto!';
+                feedback.style.color = 'green';
+                correctAnswer = generateQuestion();
+                document.getElementById('score').textContent = score;
+                document.getElementById('answer').value = '';
+            } else {
+                feedback.textContent = '❌ Incorrecto. Intenta otra vez.';
+                feedback.style.color = 'red';
+            }
+        }
+    </script>
+</body>
+</html>
